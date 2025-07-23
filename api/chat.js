@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
     }
 
     const completion = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo", // ou "gpt-4" si tu y as accès
+      model: "gpt-3.5-turbo", // ou "gpt-4" si dispo
       messages: [{ role: "user", content: message }],
       temperature: 0.7,
     });
@@ -34,3 +34,4 @@ module.exports = async (req, res) => {
     });
   }
 };
+
