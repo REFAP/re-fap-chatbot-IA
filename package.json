@@ -1,0 +1,11 @@
+{
+  "name": "re-fap-chatbot",
+  "version": "1.0.0",
+  "description": "Chatbot IA pour diagnostic moteur Re-FAP",
+  "main": "api/chat.js",
+  "type": "module",
+  "dependencies": {
+    "openai": "^4.20.0",
+    "axios": "^1.6.0"
+  }
+}
