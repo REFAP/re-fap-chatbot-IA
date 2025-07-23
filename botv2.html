@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnostic Re-FAP</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      padding: 20px;
+    }
+    .chatbox {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .message {
+      padding: 10px 15px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      max-width: 90%;
+      white-space: pre-wrap;
+    }
+    .user {
+      background-color: #dff0f9;
+      text-align: right;
+      margin-left: auto;
+    }
+    .bot {
+      background-color: #d9f4d6;
+      text-align: left;
+      margin-right: auto;
+    }
+    .loading {
+      background-color: #fff3cd;
+      color: #856404;
+      font-style: italic;
+      text-align: center;
+    }
+    #inputContainer {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #inputBox {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+    }
+    #sendBtn {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="chatbox" id="chatbox"></div>
+  <div id="inputContainer">
+    <input type="text" id="inputBox" placeholder="Décrivez votre problème moteur...">
+    <button id="sendBtn">Envoyer</button>
+  </div>
+  <script>
+    const chatbox = document.getElementById('chatbox');
+    const inputBox = document.getElementById('inputBox');
+    const sendBtn = document.getElementById('sendBtn');
+    let history = [];
+
+    function appendMessage(text, sender) {
+      const msg = document.createElement('div');
+      msg.className = `message ${sender}`;
+      msg.textContent = text;
+      chatbox.appendChild(msg);
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    function showLoading() {
+      const loading = document.createElement('div');
+      loading.id = 'loadingMessage';
+      loading.className = 'message loading';
+      loading.textContent = '⏳ Réflexion en cours...';
+      chatbox.appendChild(loading);
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    function removeLoading() {
+      const loading = document.getElementById('loadingMessage');
+      if (loading) {
+        loading.remove();
+      }
+    }
+
+    appendMessage("Salut, explique-moi ton souci moteur. Je vais tout faire pour poser un vrai diagnostic comme à l'atelier 👨‍🔧", 'bot');
+
+    async function askGPT(question) {
+      appendMessage(question, 'user');
+      history.push({ role: 'user', content: question });
+      showLoading();
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'gpt-4-1106-preview',
+            messages: [
+              {
+                role: 'system',
+                content: `Tu es un expert en diagnostic automobile avec 20 ans d'expérience en atelier. Tu es cash, pro et pédagogue comme un excellent mécano. Tu poses une série de questions précises, une par une, comme un expert méthodique. À chaque réponse, tu affines les hypothèses jusqu'à cerner clairement la cause probable. Tu ne proposes JAMAIS un lien ou une redirection avant d'avoir établi une hypothèse solide. Quand tu as suffisamment d'infos, tu:
+
+1. Résumes ton diagnostic.
+2. Donnes les causes possibles.
+3. Proposes une solution faisable soi-même si pertinente.
+4. Sinon, tu expliques pourquoi il faut aller en garage, et à ce moment là SEULEMENT, tu proposes un des liens suivants :
+  - FAP démonté : https://www.re-fap.fr
+  - FAP monté : https://re-fap.fr/trouver_garage_partenaire/
+  - Autres pannes : https://www.idgarages.com/fr-fr/prestations/diagnostic-electronique?utm_source=re-fap&utm_medium=partenariat&utm_campaign=diagnostic-electronique&ept-publisher=re-fap&ept-name=re-fap-diagnostic-electronique
+
+Pose tes questions avec bon sens, comme un pro de l'atelier qui creuse bien avant de trancher. Ton ton est humain, rigoureux et engagé. Utilise des emojis quand c’est utile.`
+              },
+              ...history
+            ]
+          })
+        });
+
+        removeLoading();
+
+        if (!response.ok) throw new Error("Réponse non valide de l'API");
+        const data = await response.json();
+        const answer = data.choices[0].message.content;
+        appendMessage(answer, 'bot');
+        history.push({ role: 'assistant', content: answer });
+      } catch (error) {
+        removeLoading();
+        appendMessage("Erreur IA : " + error.message, 'bot');
+      }
+    }
+
+    sendBtn.addEventListener('click', () => {
+      const question = inputBox.value.trim();
+      if (question) {
+        askGPT(question);
+        inputBox.value = '';
+      }
+    });
+
+    inputBox.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendBtn.click();
+      }
+    });
+  </script>
+</body>
+</html>
