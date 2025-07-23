@@ -1,3 +1,5 @@
+console.log("🔑 Clé API chargée :", process.env.OPENAI_API_KEY ? "✅ OUI" : "❌ NON");
+
 const { Configuration, OpenAIApi } = require("openai");
 
 const configuration = new Configuration({
