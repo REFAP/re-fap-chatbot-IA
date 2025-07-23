@@ -1,52 +1,67 @@
 const { Configuration, OpenAIApi } = require("openai");
 const Airtable = require("airtable");
 
-// 🔧 Airtable config
-const airtable = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY });
-const base = airtable.base(process.env.AIRTABLE_BASE_ID);
-const tableName = "CasDiagnostic";
+// Log de démarrage de la fonction
+console.log("📡 API /chat appelée");
 
-// 🔧 OpenAI config
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-const openai = new OpenAIApi(configuration);
-
-// 💬 Fonction API
 module.exports = async (req, res) => {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Méthode non autorisée" });
-  }
-
   try {
+    // Méthode autorisée ?
+    if (req.method !== "POST") {
+      console.log("❌ Méthode refusée :", req.method);
+      return res.status(405).json({ error: "Méthode non autorisée" });
+    }
+
+    // Lecture du body
     const { message } = req.body;
+    console.log("🔧 Message reçu :", message);
 
     if (!message || typeof message !== "string") {
+      console.log("⚠️ Message vide ou invalide");
       return res.status(400).json({ error: "Message invalide ou manquant" });
     }
 
-    // ✅ 1. Stocker dans Airtable
+    // Airtable - Initialisation
+    const airtableApiKey = process.env.AIRTABLE_API_KEY;
+    const airtableBaseId = process.env.AIRTABLE_BASE_ID;
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+
+    console.log("🔍 Clés récupérées :", {
+      AIRTABLE_API_KEY: airtableApiKey ? "✅" : "❌",
+      AIRTABLE_BASE_ID: airtableBaseId ? "✅" : "❌",
+      OPENAI_API_KEY: openaiApiKey ? "✅" : "❌"
+    });
+
+    // Init Airtable
+    const airtable = new Airtable({ apiKey: airtableApiKey });
+    const base = airtable.base(airtableBaseId);
+
+    // Enregistrement dans Airtable (try/catch séparé)
     try {
-      await base(tableName).create([
+      await base("CasDiagnostic").create([
         {
           fields: {
             Message: message,
-            Horodatage: new Date().toISOString(),
+            Horodatage: new Date().toISOString()
           },
         },
       ]);
-    } catch (airtableError) {
-      console.error("Erreur Airtable :", airtableError.message);
-      // On continue même si Airtable échoue
+      console.log("✅ Message enregistré dans Airtable");
+    } catch (e) {
+      console.error("❌ Erreur Airtable :", e.message);
     }
 
-    // ✅ 2. Envoyer à ChatGPT
+    // OpenAI - Configuration
+    const configuration = new Configuration({ apiKey: openaiApiKey });
+    const openai = new OpenAIApi(configuration);
+
+    // Appel OpenAI
     const completion = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
-          content: "Tu es un mécano expérimenté, parle avec bon sens, sois clair et concis. Ne donne pas de fausse certitude. Pose des questions si nécessaire.",
+          content: "Tu es un mécano expérimenté qui aide les clients à comprendre leur souci moteur avec un ton clair et direct.",
         },
         {
           role: "user",
@@ -58,17 +73,19 @@ module.exports = async (req, res) => {
 
     const reply = completion?.data?.choices?.[0]?.message?.content;
 
+    console.log("🧠 Réponse IA :", reply);
+
     if (!reply) {
       return res.status(502).json({ error: "Réponse vide de l'IA" });
     }
 
     return res.status(200).json({ reply });
 
-  } catch (error) {
-    console.error("Erreur API :", error?.response?.data || error.message);
+  } catch (err) {
+    console.error("🔥 Erreur serveur :", err.message, err.stack);
     return res.status(500).json({
-      error: "Erreur serveur",
-      details: error?.response?.data || error.message,
+      error: "Erreur interne du serveur",
+      stack: err.stack,
     });
   }
 };
