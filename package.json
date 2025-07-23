@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Chatbot IA pour diagnostic moteur Re-FAP",
   "main": "api/chat.js",
-  "type": "module",
   "dependencies": {
     "openai": "^4.20.0",
     "airtable": "^0.12.1",
